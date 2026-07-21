@@ -1,3 +1,5 @@
+package modelo;
+
 public class Estudiante {
     private String id;
     private String nombre;
@@ -79,6 +81,6 @@ public class Estudiante {
 
     @Override
     public String toString() {
-        return "Estudiante{id='" + id + "', nombre='" + nombre + "', apellido='" + apellido + "'}";
+        return "modelo.Estudiante{id='" + id + "', nombre='" + nombre + "', apellido='" + apellido + "'}";
     }
 }
