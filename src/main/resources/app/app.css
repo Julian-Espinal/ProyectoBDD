@@ -1,0 +1,74 @@
+.sidebar {
+    -fx-background-color: #1E3A5F;
+}
+
+.sidebar-title {
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.menu-button {
+    -fx-background-color: #2E5482;
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 16 18 16 18;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.menu-button:hover {
+    -fx-background-color: #3B69A0;
+}
+
+.menu-button:pressed {
+    -fx-background-color: #24446B;
+}
+
+.content-area {
+    -fx-background-color: #F4F6F8;
+}
+
+.content-placeholder {
+    -fx-text-fill: #6B7280;
+    -fx-font-size: 14px;
+}
+
+.panel-titulo {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1E3A5F;
+}
+
+.btn-primary, .btn-secondary, .btn-danger {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-padding: 8 16 8 16;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+}
+
+.btn-primary {
+    -fx-background-color: #2E7D46;
+}
+
+.btn-primary:hover {
+    -fx-background-color: #379654;
+}
+
+.btn-secondary {
+    -fx-background-color: #2E5482;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #3B69A0;
+}
+
+.btn-danger {
+    -fx-background-color: #B3352C;
+}
+
+.btn-danger:hover {
+    -fx-background-color: #C94438;
+}

@@ -12,11 +12,12 @@ public class MainApp extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/menu-principal.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/app/main-layout.fxml"));
         Parent root = loader.load();
 
         stage.setTitle("Sistema Academico - AcadDB");
         stage.setScene(new Scene(root));
+        stage.setMaximized(true);
         stage.show();
     }
 

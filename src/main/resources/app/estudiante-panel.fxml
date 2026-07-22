@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="app.controller.EstudiantePanelController"
+      spacing="16">
+    <padding>
+        <Insets top="24" right="24" bottom="24" left="24"/>
+    </padding>
+
+    <Label text="Estudiante" styleClass="panel-titulo"/>
+
+    <HBox spacing="10">
+        <Button text="Anadir" styleClass="btn-primary" onAction="#onAnadir"/>
+        <Button text="Modificar" styleClass="btn-secondary" onAction="#onModificar"/>
+        <Button text="Eliminar" styleClass="btn-danger" onAction="#onEliminar"/>
+    </HBox>
+
+    <TableView fx:id="tablaEstudiantes" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="colId" text="ID" prefWidth="100"/>
+            <TableColumn fx:id="colNombre" text="Nombre" prefWidth="140"/>
+            <TableColumn fx:id="colApellido" text="Apellido" prefWidth="140"/>
+            <TableColumn fx:id="colCarrera" text="Carrera" prefWidth="90"/>
+            <TableColumn fx:id="colCategoriaPago" text="Categoria pago" prefWidth="110"/>
+            <TableColumn fx:id="colNacionalidad" text="Nacionalidad" prefWidth="100"/>
+            <TableColumn fx:id="colDireccion" text="Direccion" prefWidth="220"/>
+        </columns>
+    </TableView>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Buscar por ID:"/>
+        <TextField fx:id="txtFiltroId" promptText="Ej. 10160001" prefWidth="220"/>
+    </HBox>
+
+</VBox>

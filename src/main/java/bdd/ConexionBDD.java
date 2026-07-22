@@ -19,8 +19,8 @@ public class ConexionBDD {
     private static final String SERVIDOR = "localhost";
     private static final int PUERTO = 1433;
     private static final String BASE_DATOS = "AcadDB(RDGC0002)";
-    private static final String USUARIO = "sa";
-    private static final String PASSWORD = "academico";
+    private static final String USUARIO = "app_academico";
+    private static final String PASSWORD = "TuNuevaPassword123";
 
     private static Connection conexion = null;
 
