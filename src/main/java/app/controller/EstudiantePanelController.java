@@ -25,6 +25,17 @@ import java.sql.PreparedStatement;
 import java.sql.CallableStatement;
 import java.sql.ResultSet;
 import java.sql.Connection;
+import bdd.AsignaturaDAO;
+import bdd.CarreraDAO;
+import bdd.GrupoDAO;
+import bdd.GrupoInscritoDAO;
+import modelo.Asignatura;
+import modelo.Carrera;
+import modelo.Grupo;
+import modelo.GrupoInscrito;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.cell.PropertyValueFactory;
+import java.util.List;
 
 import java.sql.SQLException;
 import java.util.Optional;
@@ -44,6 +55,10 @@ public class EstudiantePanelController {
     private final EstudianteDAO estudianteDAO = new EstudianteDAO();
     private final ObservableList<Estudiante> datosMaestros = FXCollections.observableArrayList();
     private FilteredList<Estudiante> datosFiltrados;
+    private final CarreraDAO carreraDAO = new CarreraDAO();
+    private final GrupoInscritoDAO grupoInscritoDAO = new GrupoInscritoDAO();
+    private final GrupoDAO grupoDAO = new GrupoDAO();
+    private final AsignaturaDAO asignaturaDAO = new AsignaturaDAO();
 
     @FXML
     private void initialize() {
@@ -428,5 +443,132 @@ public class EstudiantePanelController {
         }
 
 
+    }
+
+
+    @FXML
+    private void onVerInforme() {
+        Estudiante estudiante = tablaEstudiantes.getSelectionModel().getSelectedItem();
+        if (estudiante == null) {
+            mostrarAviso("Seleccione un estudiante primero");
+            return;
+        }
+        String periodo = comboPeriodo.getValue();
+        if (periodo == null) {
+            mostrarAviso("Seleccione un período primero");
+            return;
+        }
+        mostrarInforme(estudiante, periodo);
+    }
+
+    private void mostrarInforme(Estudiante estudiante, String periodo) {
+        try {
+            String nombreCarrera = "";
+            if (estudiante.getIdCarrera() != null) {
+                Carrera carrera = carreraDAO.buscarPorId(estudiante.getIdCarrera());
+                nombreCarrera = carrera != null ? carrera.getNombreCarrera() : estudiante.getIdCarrera();
+            }
+
+            List<GrupoInscrito> inscritos =
+                    grupoInscritoDAO.listarPorEstudiantePeriodo(estudiante.getId(), periodo);
+
+            ObservableList<InformeFila> filas = FXCollections.observableArrayList();
+            for (GrupoInscrito gi : inscritos) {
+                Asignatura asignatura = asignaturaDAO.buscarPorId(gi.getCodigoAsignatura());
+                Grupo grupo = grupoDAO.buscarPorId(gi.getCodigoPeriodo(), gi.getCodigoAsignatura(), gi.getNumeroGrupo());
+                filas.add(new InformeFila(
+                        gi.getCodigoAsignatura(),
+                        asignatura != null ? asignatura.getNombre() : "",
+                        gi.getNumeroGrupo(),
+                        grupo != null && grupo.getHorario() != null ? grupo.getHorario() : "(sin horario)"
+                ));
+            }
+
+            Label lblPeriodo = new Label("Período Académico: " + periodo);
+            Label lblEstudiante = new Label("Estudiante: " + estudiante.getId() + " - "
+                    + formatearNombreCompleto(estudiante.getNombre(), estudiante.getApellido()));
+            Label lblCarrera = new Label("Carrera: " + nombreCarrera);
+            lblPeriodo.getStyleClass().add("panel-titulo");
+
+            TableView<InformeFila> tabla = new TableView<>();
+
+            TableColumn<InformeFila, String> colCodAsig = new TableColumn<>("Código Asignatura");
+            colCodAsig.setCellValueFactory(new PropertyValueFactory<>("codigoAsignatura"));
+            colCodAsig.setPrefWidth(130);
+
+            TableColumn<InformeFila, String> colNombreAsig = new TableColumn<>("Nombre Asignatura");
+            colNombreAsig.setCellValueFactory(new PropertyValueFactory<>("nombreAsignatura"));
+            colNombreAsig.setPrefWidth(200);
+
+            TableColumn<InformeFila, String> colNumGrupo = new TableColumn<>("Número de Grupo");
+            colNumGrupo.setCellValueFactory(new PropertyValueFactory<>("numeroGrupo"));
+            colNumGrupo.setPrefWidth(130);
+
+            TableColumn<InformeFila, String> colHorario = new TableColumn<>("Horario");
+            colHorario.setCellValueFactory(new PropertyValueFactory<>("horario"));
+            colHorario.setPrefWidth(260);
+
+            tabla.getColumns().addAll(colCodAsig, colNombreAsig, colNumGrupo, colHorario);
+            tabla.setItems(filas);
+            tabla.setPrefHeight(320);
+
+            VBox root = new VBox(12, lblPeriodo, lblEstudiante, lblCarrera, tabla);
+            root.setPadding(new Insets(20));
+
+            Stage ventana = new Stage();
+            ventana.setTitle("Informe de Inscripción");
+            ventana.setScene(new Scene(root, 780, 480));
+            ventana.show();
+
+        } catch (SQLException e) {
+            mostrarError("No se pudo generar el informe de inscripción", e);
+        }
+    }
+
+    /** Formatea "Juan Antonio" + "Luna Perez" -> "Juan A. Luna P." */
+    private String formatearNombreCompleto(String nombre, String apellido) {
+        String primerNombre = "";
+        String inicialSegundoNombre = "";
+        if (nombre != null && !nombre.trim().isEmpty()) {
+            String[] partes = nombre.trim().split("\\s+");
+            primerNombre = partes[0];
+            if (partes.length > 1) {
+                inicialSegundoNombre = partes[1].substring(0, 1).toUpperCase() + ".";
+            }
+        }
+        String primerApellido = "";
+        String inicialSegundoApellido = "";
+        if (apellido != null && !apellido.trim().isEmpty()) {
+            String[] partes = apellido.trim().split("\\s+");
+            primerApellido = partes[0];
+            if (partes.length > 1) {
+                inicialSegundoApellido = partes[1].substring(0, 1).toUpperCase() + ".";
+            }
+        }
+        StringBuilder sb = new StringBuilder(primerNombre);
+        if (!inicialSegundoNombre.isEmpty()) sb.append(" ").append(inicialSegundoNombre);
+        sb.append(" ").append(primerApellido);
+        if (!inicialSegundoApellido.isEmpty()) sb.append(" ").append(inicialSegundoApellido);
+        return sb.toString();
+    }
+
+    /** Fila para la tabla del informe de inscripción. */
+    public static class InformeFila {
+        private final String codigoAsignatura;
+        private final String nombreAsignatura;
+        private final String numeroGrupo;
+        private final String horario;
+
+        public InformeFila(String codigoAsignatura, String nombreAsignatura, String numeroGrupo, String horario) {
+            this.codigoAsignatura = codigoAsignatura;
+            this.nombreAsignatura = nombreAsignatura;
+            this.numeroGrupo = numeroGrupo;
+            this.horario = horario;
+        }
+
+        public String getCodigoAsignatura() { return codigoAsignatura; }
+        public String getNombreAsignatura() { return nombreAsignatura; }
+        public String getNumeroGrupo() { return numeroGrupo; }
+        public String getHorario() { return horario; }
     }
 }

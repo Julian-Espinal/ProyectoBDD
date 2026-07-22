@@ -53,6 +53,10 @@
 
     </HBox>
 
+    <Button text="Informe de Inscripción"
+            styleClass="btn-secondary"
+            onAction="#onVerInforme"/>
+
 
 
     <TableView fx:id="tablaEstudiantes"
