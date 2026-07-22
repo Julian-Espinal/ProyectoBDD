@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="app.controller.HorarioGrupoPanelController"
+      spacing="16">
+
+    <padding>
+        <Insets top="24" right="24" bottom="24" left="24"/>
+    </padding>
+
+    <Label text="Horario de Grupo" styleClass="panel-titulo"/>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Periodo:"/>
+        <ComboBox fx:id="cbPeriodo" prefWidth="140"/>
+        <Label text="Grupo:"/>
+        <ComboBox fx:id="cbGrupo" prefWidth="280"/>
+        <Button text="Nuevo grupo" styleClass="btn-secondary" onAction="#onNuevoGrupo"/>
+    </HBox>
+
+    <Label fx:id="lblInfoGrupo" text="Selecciona un grupo para ver su información" styleClass="content-placeholder"/>
+
+    <TableView fx:id="tablaHorarios" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="colDia" text="Día" prefWidth="140"/>
+            <TableColumn fx:id="colHoraInicio" text="Hora inicio" prefWidth="120"/>
+            <TableColumn fx:id="colHoraFin" text="Hora fin" prefWidth="120"/>
+        </columns>
+    </TableView>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Día:"/>
+        <ComboBox fx:id="cbDia" prefWidth="140"/>
+        <Label text="Inicio (HH:mm):"/>
+        <TextField fx:id="txtHoraInicio" prefWidth="80" promptText="08:00"/>
+        <Label text="Fin (HH:mm):"/>
+        <TextField fx:id="txtHoraFin" prefWidth="80" promptText="10:00"/>
+        <Button text="Agregar horario" styleClass="btn-primary" onAction="#onAgregarHorario"/>
+        <Button text="Eliminar horario" styleClass="btn-danger" onAction="#onEliminarHorario"/>
+    </HBox>
+
+</VBox>

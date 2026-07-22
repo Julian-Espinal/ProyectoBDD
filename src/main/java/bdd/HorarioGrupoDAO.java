@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,22 +29,42 @@ public class HorarioGrupoDAO {
     }
 
     /** Elimina una fila específica de horario (un día puntual de un grupo). */
-    public boolean eliminar(String codigoPeriodo, String codigoAsignatura, String numeroGrupo,
-                            int dia, LocalTime horaInicio) throws SQLException {
-        String sql = "DELETE FROM HorarioGrupo WHERE RTRIM(codigoPeriodo) = ? AND RTRIM(codigoAsignatura) = ? " +
-                "AND RTRIM(numeroGrupo) = ? AND dia = ? AND horaInicio = ?";
+    public boolean eliminar(String codigoPeriodo,
+                            String codigoAsignatura,
+                            String numeroGrupo,
+                            int dia,
+                            LocalTime horaInicio) throws SQLException {
+
+        String sql = """
+DELETE FROM HorarioGrupo
+WHERE RTRIM(codigoPeriodo) = ?
+AND RTRIM(codigoAsignatura) = ?
+AND RTRIM(numeroGrupo) = ?
+AND dia = ?
+AND CONVERT(char(8), horaInicio, 108) = ?
+""";
+
         try (Connection con = ConexionBDD.getConexion();
              PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setString(1, codigoPeriodo.trim());
             ps.setString(2, codigoAsignatura.trim());
             ps.setString(3, numeroGrupo.trim());
             ps.setInt(4, dia);
-            ps.setTime(5, Time.valueOf(horaInicio));
-            return ps.executeUpdate() > 0;
+            ps.setString(5, horaInicio.format(
+                    DateTimeFormatter.ofPattern("HH:mm:ss")
+            ));
+
+            int filas = ps.executeUpdate();
+
+            System.out.println("Hora buscada: " +
+                    horaInicio.format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+
+            System.out.println("Filas eliminadas: " + filas);
+
+            return filas > 0;
         }
     }
-
-    /** Elimina TODOS los horarios de un grupo (útil antes de reasignar desde cero). */
     public boolean eliminarPorGrupo(String codigoPeriodo, String codigoAsignatura, String numeroGrupo)
             throws SQLException {
         String sql = "DELETE FROM HorarioGrupo WHERE RTRIM(codigoPeriodo) = ? AND RTRIM(codigoAsignatura) = ? " +

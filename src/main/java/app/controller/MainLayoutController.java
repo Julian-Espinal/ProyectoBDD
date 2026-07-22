@@ -34,7 +34,7 @@ public class MainLayoutController {
 
     @FXML
     private void onHorarioGrupo() {
-        mostrarPlaceholder("Horario de grupo");
+        cargarPanel("/app/horario-grupo-panel.fxml");
     }
 
     @FXML
