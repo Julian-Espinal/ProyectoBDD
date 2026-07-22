@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="app.controller.MenuPrincipalController"
+      alignment="TOP_CENTER"
+      spacing="12"
+      prefWidth="360">
+    <padding>
+        <Insets top="24" right="24" bottom="24" left="24"/>
+    </padding>
+
+    <Label text="Sistema Academico" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+
+    <Button text="CRUD Estudiante / Asignatura" maxWidth="Infinity" onAction="#onCrudEstudiante"/>
+    <Button text="Asignar horario a un grupo" maxWidth="Infinity" onAction="#onHorarioGrupo"/>
+    <Button text="Inscribir grupos a un estudiante" maxWidth="Infinity" onAction="#onInscripcion"/>
+    <Button text="Horario cuadriculado" maxWidth="Infinity" onAction="#onHorarioCuadriculado"/>
+    <Button text="Informe de inscripcion" maxWidth="Infinity" onAction="#onInforme"/>
+</VBox>

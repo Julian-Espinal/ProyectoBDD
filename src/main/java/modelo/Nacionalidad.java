@@ -3,6 +3,7 @@ package modelo;
 public class Nacionalidad {
     private String id;
     private String nombre;
+
     public Nacionalidad(String id, String nombre) {
         this.id = id;
         this.nombre = nombre;
