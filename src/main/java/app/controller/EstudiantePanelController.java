@@ -2,6 +2,8 @@ package app.controller;
 
 import bdd.ConexionBDD;
 import bdd.EstudianteDAO;
+import bdd.HorarioClaseDAO;
+import bdd.TablaResultado;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -12,17 +14,11 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import modelo.Estudiante;
 import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.fxml.FXML;
-import javafx.scene.control.*;
 import javafx.stage.Stage;
 import javafx.scene.Scene;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.ComboBox;
-import javafx.collections.FXCollections;
 import java.sql.PreparedStatement;
-import java.sql.CallableStatement;
 import java.sql.ResultSet;
 import java.sql.Connection;
 import bdd.AsignaturaDAO;
@@ -34,7 +30,6 @@ import modelo.Carrera;
 import modelo.Grupo;
 import modelo.GrupoInscrito;
 import javafx.scene.control.TableColumn;
-import javafx.scene.control.cell.PropertyValueFactory;
 import java.util.List;
 
 import java.sql.SQLException;
@@ -59,6 +54,7 @@ public class EstudiantePanelController {
     private final GrupoInscritoDAO grupoInscritoDAO = new GrupoInscritoDAO();
     private final GrupoDAO grupoDAO = new GrupoDAO();
     private final AsignaturaDAO asignaturaDAO = new AsignaturaDAO();
+    private final HorarioClaseDAO horarioClaseDAO = new HorarioClaseDAO();
 
     @FXML
     private void initialize() {
@@ -218,231 +214,82 @@ public class EstudiantePanelController {
     }
 
     @FXML
-    private void onVerHorario(){
+    private void onVerHorario() {
 
+        Estudiante estudiante = tablaEstudiantes.getSelectionModel().getSelectedItem();
 
-        Estudiante estudiante =
-                tablaEstudiantes.getSelectionModel()
-                        .getSelectedItem();
-
-
-        if(estudiante == null){
-
-            Alert alerta = new Alert(Alert.AlertType.WARNING);
-
-            alerta.setTitle("Aviso");
-
-            alerta.setHeaderText(null);
-
-            alerta.setContentText(
-                    "Seleccione un estudiante primero"
-            );
-
-            alerta.show();
-
+        if (estudiante == null) {
+            mostrarAviso("Seleccione un estudiante primero");
             return;
         }
 
+        String periodo = comboPeriodo.getValue();
+        if (periodo == null) {
+            mostrarAviso("Seleccione un período primero");
+            return;
+        }
 
-        String id = estudiante.getId();
-
-
-        cargarHorario(id);
-
+        cargarHorario(estudiante.getId(), periodo);
     }
 
-    private void cargarHorario(String id){
+    /** Horario cuadriculado: delega en HorarioClaseDAO (SP HorarioClase) y pinta una tabla dinámica. */
+    private void cargarHorario(String idEstudiante, String periodo) {
+        try {
+            TablaResultado resultado = horarioClaseDAO.obtenerHorarioCuadriculado(idEstudiante, periodo);
 
+            TableView<ObservableList<String>> tabla = new TableView<>();
 
-        String periodo = comboPeriodo.getValue();
-
-
-        String sql = "{call HorarioClase (?,?)}";
-
-
-
-        try(Connection cn = ConexionBDD.getConexion();
-
-            CallableStatement st =
-                    cn.prepareCall(sql)){
-
-
-
-            st.setString(1,id);
-
-            st.setString(2,periodo);
-
-
-
-            ResultSet rs =
-                    st.executeQuery();
-
-
-
-            TableView<ObservableList<String>> tabla =
-                    new TableView<>();
-
-
-
-            int columnas =
-                    rs.getMetaData()
-                            .getColumnCount();
-
-
-
-            for(int i=1;i<=columnas;i++){
-
-
-                final int posicion=i-1;
-
-
-                TableColumn<ObservableList<String>,String> columna =
-                        new TableColumn<>(
-                                rs.getMetaData()
-                                        .getColumnName(i)
-                        );
-
-
-
+            List<String> columnas = resultado.getColumnas();
+            for (int i = 0; i < columnas.size(); i++) {
+                final int posicion = i;
+                TableColumn<ObservableList<String>, String> columna = new TableColumn<>(columnas.get(i));
                 columna.setCellValueFactory(data ->
-
-                        new SimpleStringProperty(
-                                data.getValue()
-                                        .get(posicion)
-                        )
-
-                );
-
-
-
-                tabla.getColumns()
-                        .add(columna);
-
-
+                        new SimpleStringProperty(data.getValue().get(posicion)));
+                tabla.getColumns().add(columna);
             }
 
-
-
-            while(rs.next()){
-
-
-                ObservableList<String> fila =
-                        FXCollections.observableArrayList();
-
-
-
-                for(int i=1;i<=columnas;i++){
-
-
-                    String dato =
-                            rs.getString(i);
-
-
-                    if(dato==null)
-                        dato="";
-
-
-                    fila.add(dato);
-
-
+            for (String[] fila : resultado.getFilas()) {
+                ObservableList<String> filaObservable = FXCollections.observableArrayList();
+                for (String dato : fila) {
+                    filaObservable.add(dato == null ? "" : dato);
                 }
-
-
-
-                tabla.getItems()
-                        .add(fila);
-
-
+                tabla.getItems().add(filaObservable);
             }
 
-
+            if (resultado.getFilas().isEmpty()) {
+                mostrarAviso("El estudiante no tiene grupos inscritos con horario en ese período.");
+            }
 
             Stage ventana = new Stage();
-
-
-            VBox root =
-                    new VBox(tabla);
-
-
-            Scene scene =
-                    new Scene(root,900,600);
-
-
-
-            ventana.setTitle(
-                    "Horario del estudiante"
-            );
-
-
+            VBox root = new VBox(tabla);
+            Scene scene = new Scene(root, 900, 600);
+            ventana.setTitle("Horario del estudiante");
             ventana.setScene(scene);
-
-
             ventana.show();
 
-
-
+        } catch (SQLException e) {
+            mostrarError("No se pudo generar el horario cuadriculado", e);
         }
-        catch(Exception e){
-
-            e.printStackTrace();
-
-            Alert alerta =
-                    new Alert(Alert.AlertType.ERROR);
-
-            alerta.setContentText(
-                    e.getMessage()
-            );
-
-            alerta.show();
-
-        }
-
-
     }
 
-    private void cargarPeriodos(){
+    private void cargarPeriodos() {
 
+        ObservableList<String> periodos = FXCollections.observableArrayList();
+        String sql = "SELECT codigo FROM PeriodoAcademico ORDER BY codigo DESC";
 
-        ObservableList<String> periodos =
-                FXCollections.observableArrayList();
+        try (Connection cn = ConexionBDD.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
 
-
-        String sql =
-                "SELECT codigo FROM PeriodoAcademico ORDER BY codigo DESC";
-
-
-
-        try(Connection cn = ConexionBDD.getConexion();
-
-            PreparedStatement ps =
-                    cn.prepareStatement(sql);
-
-            ResultSet rs = ps.executeQuery()){
-
-
-            while(rs.next()){
-
-
-                periodos.add(
-                        rs.getString("codigo").trim()
-                );
-
-
+            while (rs.next()) {
+                periodos.add(rs.getString("codigo").trim());
             }
-
-
 
             comboPeriodo.setItems(periodos);
 
-
-
-        }catch(Exception e){
-
-            e.printStackTrace();
-
+        } catch (SQLException e) {
+            mostrarError("No se pudo cargar la lista de períodos", e);
         }
-
-
     }
 
 

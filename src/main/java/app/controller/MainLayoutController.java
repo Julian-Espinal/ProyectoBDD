@@ -42,9 +42,14 @@ public class MainLayoutController {
         cargarPanel("/app/inscripcion-panel.fxml");
     }
 
+    /**
+     * El horario cuadriculado se genera desde el panel de Estudiante
+     * (selecciona un estudiante + período y pulsa "Ver Horario"), así que
+     * esta opción del menú simplemente lleva ahí en vez de duplicar pantalla.
+     */
     @FXML
     private void onHorarioCuadriculado() {
-        mostrarPlaceholder("Horario cuadriculado");
+        cargarPanel("/app/estudiante-panel.fxml");
     }
 
     @FXML

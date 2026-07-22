@@ -18,9 +18,13 @@ import modelo.Grupo;
 import modelo.GrupoInscrito;
 import modelo.HorarioGrupo;
 
+import java.time.LocalTime;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class InscripcionPanelController {
@@ -55,7 +59,14 @@ public class InscripcionPanelController {
     private final ObservableList<HorarioGrupo> datosHorario = FXCollections.observableArrayList();
 
     /** Cache del nombre de asignatura por código, para no ir a la BD por cada fila. */
-    private final java.util.Map<String, String> nombresAsignatura = new java.util.HashMap<>();
+    private final Map<String, String> nombresAsignatura = new HashMap<>();
+
+    // ---- Caches por período: se recargan SOLO cuando cambia el período, ----
+    // ---- no cuando cambia el estudiante. Esto elimina el patrón N+1.     ----
+    private String periodoCacheado = null;
+    private List<Grupo> gruposPeriodoActual = new ArrayList<>();
+    private Map<String, Integer> conteoInscritosPeriodo = new HashMap<>();
+    private Map<String, List<HorarioGrupo>> horariosPorGrupoPeriodo = new HashMap<>();
 
     @FXML
     private void initialize() {
@@ -84,7 +95,14 @@ public class InscripcionPanelController {
             @Override public Estudiante fromString(String s) { return null; }
         });
 
-        cbPeriodo.valueProperty().addListener((obs, viejo, nuevo) -> cargarListas());
+        // Cambiar de PERIODO recarga las caches (grupos, cupos, horarios) desde la BD.
+        cbPeriodo.valueProperty().addListener((obs, viejo, nuevo) -> {
+            cargarCachesDelPeriodo(nuevo);
+            cargarListas();
+        });
+
+        // Cambiar de ESTUDIANTE solo reutiliza las caches ya cargadas: sin queries extra
+        // salvo la de sus inscripciones (una sola consulta, indispensable).
         cbEstudiante.valueProperty().addListener((obs, viejo, nuevo) -> cargarListas());
 
         tablaDisponibles.getSelectionModel().selectedItemProperty()
@@ -126,6 +144,34 @@ public class InscripcionPanelController {
         });
     }
 
+    /**
+     * Carga en memoria, con 3 consultas totales (independiente de cuántos grupos haya),
+     * todo lo que se necesita del período: los grupos, cuántos inscritos tiene cada uno,
+     * y el horario completo de cada uno. Se llama SOLO cuando cambia el período.
+     */
+    private void cargarCachesDelPeriodo(String periodo) {
+        gruposPeriodoActual = new ArrayList<>();
+        conteoInscritosPeriodo = new HashMap<>();
+        horariosPorGrupoPeriodo = new HashMap<>();
+        periodoCacheado = periodo;
+
+        if (periodo == null) return;
+
+        try {
+            gruposPeriodoActual = grupoDAO.listarPorPeriodo(periodo);
+            conteoInscritosPeriodo = grupoInscritoDAO.contarInscritosPorPeriodo(periodo);
+
+            List<HorarioGrupo> horariosDelPeriodo = horarioGrupoDAO.listarPorPeriodo(periodo);
+            for (HorarioGrupo h : horariosDelPeriodo) {
+                String key = clave(h.getCodigoAsignatura(), h.getNumeroGrupo());
+                horariosPorGrupoPeriodo.computeIfAbsent(key, k -> new ArrayList<>()).add(h);
+            }
+        } catch (SQLException e) {
+            error("No se pudo cargar la información del período", e);
+        }
+    }
+
+    /** Reconstruye las tablas de disponibles/inscritos usando las caches del período + las inscripciones del estudiante. */
     private void cargarListas() {
         datosDisponibles.clear();
         datosInscritos.clear();
@@ -135,8 +181,12 @@ public class InscripcionPanelController {
         Estudiante estudiante = cbEstudiante.getValue();
         if (periodo == null || estudiante == null) return;
 
+        // Seguridad: si por algún motivo la cache no corresponde al período actual, recárgala.
+        if (!periodo.equals(periodoCacheado)) {
+            cargarCachesDelPeriodo(periodo);
+        }
+
         try {
-            List<Grupo> gruposPeriodo = grupoDAO.listarPorPeriodo(periodo);
             List<GrupoInscrito> inscripciones =
                     grupoInscritoDAO.listarPorEstudiantePeriodo(estudiante.getId(), periodo);
 
@@ -145,15 +195,14 @@ public class InscripcionPanelController {
                 inscritoKeys.add(clave(gi.getCodigoAsignatura(), gi.getNumeroGrupo()));
             }
 
-            for (Grupo g : gruposPeriodo) {
+            for (Grupo g : gruposPeriodoActual) {
                 String key = clave(g.getCodigoAsignatura(), g.getNumeroGrupo());
                 String nombreAsig = nombreAsignatura(g.getCodigoAsignatura());
 
                 if (inscritoKeys.contains(key)) {
                     datosInscritos.add(new GrupoFila(g, nombreAsig, ""));
                 } else {
-                    int inscritos = grupoInscritoDAO.contarInscritos(
-                            g.getCodigoPeriodo(), g.getCodigoAsignatura(), g.getNumeroGrupo());
+                    int inscritos = conteoInscritosPeriodo.getOrDefault(key, 0);
                     boolean hayCupo = g.getCupoGrupo() == null || inscritos < g.getCupoGrupo();
                     if (hayCupo) {
                         String cupoTexto = g.getCupoGrupo() == null ? "-" : String.valueOf(g.getCupoGrupo() - inscritos);
@@ -170,15 +219,12 @@ public class InscripcionPanelController {
         return codigoAsignatura.trim() + "|" + numeroGrupo.trim();
     }
 
+    /** Muestra el horario de un grupo usando la cache del período (sin consultar la BD). */
     private void cargarHorario(Grupo g) {
         datosHorario.clear();
         if (g == null) return;
-        try {
-            datosHorario.setAll(horarioGrupoDAO.listarPorGrupo(
-                    g.getCodigoPeriodo(), g.getCodigoAsignatura(), g.getNumeroGrupo()));
-        } catch (SQLException e) {
-            error("No se pudo cargar el horario del grupo", e);
-        }
+        String key = clave(g.getCodigoAsignatura(), g.getNumeroGrupo());
+        datosHorario.setAll(horariosPorGrupoPeriodo.getOrDefault(key, List.of()));
     }
 
     @FXML
@@ -197,14 +243,23 @@ public class InscripcionPanelController {
         }
 
         Grupo g = seleccionado.getGrupo();
+
+        String conflicto = detectarCruceHorario(g);
+        if (conflicto != null) {
+            aviso("No se puede inscribir: el horario cruza con " + conflicto + ".");
+            return;
+        }
+
         GrupoInscrito gi = new GrupoInscrito(periodo, estudiante.getId(),
                 g.getCodigoAsignatura(), g.getNumeroGrupo());
 
         try {
             grupoInscritoDAO.insertar(gi);
+            // El cupo disponible cambió: refrescamos la cache del período.
+            cargarCachesDelPeriodo(periodo);
             cargarListas();
         } catch (SQLException e) {
-            error("No se pudo inscribir el grupo (revise si hay cruce de horario o cupo)", e);
+            error("No se pudo inscribir el grupo", e);
         }
     }
 
@@ -222,10 +277,53 @@ public class InscripcionPanelController {
         Grupo g = seleccionado.getGrupo();
         try {
             grupoInscritoDAO.eliminar(periodo, estudiante.getId(), g.getCodigoAsignatura(), g.getNumeroGrupo());
+            // El cupo disponible cambió: refrescamos la cache del período.
+            cargarCachesDelPeriodo(periodo);
             cargarListas();
         } catch (SQLException e) {
             error("No se pudo eliminar la inscripción", e);
         }
+    }
+
+    /**
+     * Compara el horario del grupo candidato contra los horarios de todos los grupos
+     * en los que el estudiante ya está inscrito (tabla "Inscritos" actualmente en pantalla).
+     * Usa la cache en memoria, no consulta la BD. Devuelve la descripción del grupo con
+     * el que cruza, o null si no hay cruce.
+     */
+    private String detectarCruceHorario(Grupo candidato) {
+        String keyCandidato = clave(candidato.getCodigoAsignatura(), candidato.getNumeroGrupo());
+        List<HorarioGrupo> horarioCandidato = horariosPorGrupoPeriodo.getOrDefault(keyCandidato, List.of());
+
+        if (horarioCandidato.isEmpty()) return null; // sin horario asignado, nada que cruzar
+
+        for (GrupoFila fila : datosInscritos) {
+            Grupo gInscrito = fila.getGrupo();
+            String keyInscrito = clave(gInscrito.getCodigoAsignatura(), gInscrito.getNumeroGrupo());
+            List<HorarioGrupo> horarioInscrito = horariosPorGrupoPeriodo.getOrDefault(keyInscrito, List.of());
+
+            for (HorarioGrupo hCand : horarioCandidato) {
+                for (HorarioGrupo hIns : horarioInscrito) {
+                    if (seCruzan(hCand, hIns)) {
+                        return gInscrito.getCodigoAsignatura() + " - Grupo " + gInscrito.getNumeroGrupo();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Dos bloques cruzan si son el mismo día y sus rangos de hora se solapan. */
+    private boolean seCruzan(HorarioGrupo a, HorarioGrupo b) {
+        if (a.getDia() != b.getDia()) return false;
+
+        LocalTime iniA = a.getHoraInicio();
+        LocalTime finA = a.getHoraFin() != null ? a.getHoraFin() : iniA;
+        LocalTime iniB = b.getHoraInicio();
+        LocalTime finB = b.getHoraFin() != null ? b.getHoraFin() : iniB;
+
+        // Solapan si NO ocurre que uno termina antes de que el otro empiece.
+        return iniA.isBefore(finB) && iniB.isBefore(finA);
     }
 
     private void aviso(String m) {

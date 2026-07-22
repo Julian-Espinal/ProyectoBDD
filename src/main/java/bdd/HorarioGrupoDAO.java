@@ -99,6 +99,27 @@ AND CONVERT(char(8), horaInicio, 108) = ?
         return lista;
     }
 
+    /**
+     * Trae TODOS los horarios de un período en una sola consulta.
+     * Se usa para cachear en memoria y evitar consultar grupo por grupo
+     * (patrón N+1) al validar cruces o mostrar el horario de cada grupo.
+     */
+    public List<HorarioGrupo> listarPorPeriodo(String codigoPeriodo) throws SQLException {
+        List<HorarioGrupo> lista = new ArrayList<>();
+        String sql = "SELECT codigoPeriodo, codigoAsignatura, numeroGrupo, dia, horaInicio, horaFin " +
+                "FROM HorarioGrupo WHERE RTRIM(codigoPeriodo) = ? ORDER BY codigoAsignatura, numeroGrupo, dia";
+        try (Connection con = ConexionBDD.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, codigoPeriodo.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapear(rs));
+                }
+            }
+        }
+        return lista;
+    }
+
     public List<HorarioGrupo> listarTodos() throws SQLException {
         List<HorarioGrupo> lista = new ArrayList<>();
         String sql = "SELECT codigoPeriodo, codigoAsignatura, numeroGrupo, dia, horaInicio, horaFin " +

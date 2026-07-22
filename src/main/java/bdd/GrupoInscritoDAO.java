@@ -6,7 +6,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** DAO para la tabla GruposInscritos. Llave compuesta: (codigoPeriodo, idEstudiante, codigoAsignatura, numeroGrupo) */
 public class GrupoInscritoDAO {
@@ -74,6 +76,28 @@ public class GrupoInscritoDAO {
             }
         }
         return 0;
+    }
+
+    /**
+     * Cuenta los inscritos de TODOS los grupos de un período en una sola consulta
+     * (evita el patrón N+1 de llamar contarInscritos() grupo por grupo).
+     * Clave del mapa: "codigoAsignatura|numeroGrupo" (ya trim-eados).
+     */
+    public Map<String, Integer> contarInscritosPorPeriodo(String codigoPeriodo) throws SQLException {
+        Map<String, Integer> mapa = new HashMap<>();
+        String sql = "SELECT codigoAsignatura, numeroGrupo, COUNT(*) AS total FROM GruposInscritos " +
+                "WHERE RTRIM(codigoPeriodo) = ? GROUP BY codigoAsignatura, numeroGrupo";
+        try (Connection con = ConexionBDD.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, codigoPeriodo.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String key = rs.getString("codigoAsignatura").trim() + "|" + rs.getString("numeroGrupo").trim();
+                    mapa.put(key, rs.getInt("total"));
+                }
+            }
+        }
+        return mapa;
     }
 
     public List<GrupoInscrito> listarTodos() throws SQLException {
