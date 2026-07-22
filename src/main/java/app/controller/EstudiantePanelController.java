@@ -1,5 +1,6 @@
 package app.controller;
 
+import bdd.ConexionBDD;
 import bdd.EstudianteDAO;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -10,12 +11,26 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import modelo.Estudiante;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.stage.Stage;
+import javafx.scene.Scene;
+import javafx.scene.layout.VBox;
+import javafx.scene.control.ComboBox;
+import javafx.collections.FXCollections;
+import java.sql.PreparedStatement;
+import java.sql.CallableStatement;
+import java.sql.ResultSet;
+import java.sql.Connection;
 
 import java.sql.SQLException;
 import java.util.Optional;
 
 public class EstudiantePanelController {
-
+    @FXML private ComboBox<String> comboPeriodo;
     @FXML private TableView<Estudiante> tablaEstudiantes;
     @FXML private TableColumn<Estudiante, String> colId;
     @FXML private TableColumn<Estudiante, String> colNombre;
@@ -39,7 +54,7 @@ public class EstudiantePanelController {
         colCategoriaPago.setCellValueFactory(new PropertyValueFactory<>("idCategoriaPago"));
         colNacionalidad.setCellValueFactory(new PropertyValueFactory<>("idNacionalidad"));
         colDireccion.setCellValueFactory(new PropertyValueFactory<>("direccion"));
-
+        cargarPeriodos();
         datosFiltrados = new FilteredList<>(datosMaestros, e -> true);
         tablaEstudiantes.setItems(datosFiltrados);
 
@@ -185,5 +200,233 @@ public class EstudiantePanelController {
         alert.setHeaderText(mensaje);
         alert.setContentText(e.getMessage());
         alert.showAndWait();
+    }
+
+    @FXML
+    private void onVerHorario(){
+
+
+        Estudiante estudiante =
+                tablaEstudiantes.getSelectionModel()
+                        .getSelectedItem();
+
+
+        if(estudiante == null){
+
+            Alert alerta = new Alert(Alert.AlertType.WARNING);
+
+            alerta.setTitle("Aviso");
+
+            alerta.setHeaderText(null);
+
+            alerta.setContentText(
+                    "Seleccione un estudiante primero"
+            );
+
+            alerta.show();
+
+            return;
+        }
+
+
+        String id = estudiante.getId();
+
+
+        cargarHorario(id);
+
+    }
+
+    private void cargarHorario(String id){
+
+
+        String periodo = comboPeriodo.getValue();
+
+
+        String sql = "{call HorarioClase (?,?)}";
+
+
+
+        try(Connection cn = ConexionBDD.getConexion();
+
+            CallableStatement st =
+                    cn.prepareCall(sql)){
+
+
+
+            st.setString(1,id);
+
+            st.setString(2,periodo);
+
+
+
+            ResultSet rs =
+                    st.executeQuery();
+
+
+
+            TableView<ObservableList<String>> tabla =
+                    new TableView<>();
+
+
+
+            int columnas =
+                    rs.getMetaData()
+                            .getColumnCount();
+
+
+
+            for(int i=1;i<=columnas;i++){
+
+
+                final int posicion=i-1;
+
+
+                TableColumn<ObservableList<String>,String> columna =
+                        new TableColumn<>(
+                                rs.getMetaData()
+                                        .getColumnName(i)
+                        );
+
+
+
+                columna.setCellValueFactory(data ->
+
+                        new SimpleStringProperty(
+                                data.getValue()
+                                        .get(posicion)
+                        )
+
+                );
+
+
+
+                tabla.getColumns()
+                        .add(columna);
+
+
+            }
+
+
+
+            while(rs.next()){
+
+
+                ObservableList<String> fila =
+                        FXCollections.observableArrayList();
+
+
+
+                for(int i=1;i<=columnas;i++){
+
+
+                    String dato =
+                            rs.getString(i);
+
+
+                    if(dato==null)
+                        dato="";
+
+
+                    fila.add(dato);
+
+
+                }
+
+
+
+                tabla.getItems()
+                        .add(fila);
+
+
+            }
+
+
+
+            Stage ventana = new Stage();
+
+
+            VBox root =
+                    new VBox(tabla);
+
+
+            Scene scene =
+                    new Scene(root,900,600);
+
+
+
+            ventana.setTitle(
+                    "Horario del estudiante"
+            );
+
+
+            ventana.setScene(scene);
+
+
+            ventana.show();
+
+
+
+        }
+        catch(Exception e){
+
+            e.printStackTrace();
+
+            Alert alerta =
+                    new Alert(Alert.AlertType.ERROR);
+
+            alerta.setContentText(
+                    e.getMessage()
+            );
+
+            alerta.show();
+
+        }
+
+
+    }
+
+    private void cargarPeriodos(){
+
+
+        ObservableList<String> periodos =
+                FXCollections.observableArrayList();
+
+
+        String sql =
+                "SELECT codigo FROM PeriodoAcademico ORDER BY codigo DESC";
+
+
+
+        try(Connection cn = ConexionBDD.getConexion();
+
+            PreparedStatement ps =
+                    cn.prepareStatement(sql);
+
+            ResultSet rs = ps.executeQuery()){
+
+
+            while(rs.next()){
+
+
+                periodos.add(
+                        rs.getString("codigo").trim()
+                );
+
+
+            }
+
+
+
+            comboPeriodo.setItems(periodos);
+
+
+
+        }catch(Exception e){
+
+            e.printStackTrace();
+
+        }
+
+
     }
 }
