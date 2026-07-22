@@ -29,7 +29,7 @@ public class MainLayoutController {
 
     @FXML
     private void onAsignatura() {
-        mostrarPlaceholder("Asignatura");
+        cargarPanel("/app/asignatura-panel.fxml");
     }
 
     @FXML

@@ -76,12 +76,13 @@ public class AsignaturaDAO {
     }
 
     private Asignatura mapear(ResultSet rs) throws SQLException {
+
         return new Asignatura(
                 rs.getString("codigo").trim(),
                 rs.getString("nombre"),
-                (Integer) rs.getObject("creditos"),
-                (Integer) rs.getObject("horasTeoricas"),
-                (Integer) rs.getObject("horasPracticas")
+                rs.getInt("creditos"),
+                rs.getInt("horasTeoricas"),
+                rs.getInt("horasPracticas")
         );
     }
 }
