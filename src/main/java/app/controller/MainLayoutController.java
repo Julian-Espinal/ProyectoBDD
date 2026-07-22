@@ -39,7 +39,7 @@ public class MainLayoutController {
 
     @FXML
     private void onInscripcion() {
-        mostrarPlaceholder("Inscripcion de grupos");
+        cargarPanel("/app/inscripcion-panel.fxml");
     }
 
     @FXML

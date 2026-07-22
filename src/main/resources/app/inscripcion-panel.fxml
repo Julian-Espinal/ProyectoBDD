@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="app.controller.InscripcionPanelController"
+      spacing="16">
+
+    <padding>
+        <Insets top="24" right="24" bottom="24" left="24"/>
+    </padding>
+
+    <Label text="Inscripción de Grupos" styleClass="panel-titulo"/>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Periodo:"/>
+        <ComboBox fx:id="cbPeriodo" prefWidth="140"/>
+        <Label text="Estudiante:"/>
+        <ComboBox fx:id="cbEstudiante" prefWidth="320"/>
+    </HBox>
+
+    <HBox spacing="16" VBox.vgrow="ALWAYS">
+
+        <VBox spacing="8" HBox.hgrow="ALWAYS">
+            <Label text="Grupos disponibles"/>
+            <TableView fx:id="tablaDisponibles" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="colDispAsignatura" text="Asignatura" prefWidth="110"/>
+                    <TableColumn fx:id="colDispNombre" text="Nombre" prefWidth="160"/>
+                    <TableColumn fx:id="colDispGrupo" text="Grupo" prefWidth="60"/>
+                    <TableColumn fx:id="colDispCupo" text="Cupo disp." prefWidth="80"/>
+                </columns>
+            </TableView>
+        </VBox>
+
+        <VBox spacing="10" alignment="CENTER">
+            <Button text="Inscribir &gt;&gt;" styleClass="btn-primary" onAction="#onInscribir"/>
+            <Button text="&lt;&lt; Eliminar" styleClass="btn-danger" onAction="#onEliminarInscripcion"/>
+        </VBox>
+
+        <VBox spacing="8" HBox.hgrow="ALWAYS">
+            <Label text="Grupos inscritos"/>
+            <TableView fx:id="tablaInscritos" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="colInsAsignatura" text="Asignatura" prefWidth="110"/>
+                    <TableColumn fx:id="colInsNombre" text="Nombre" prefWidth="160"/>
+                    <TableColumn fx:id="colInsGrupo" text="Grupo" prefWidth="60"/>
+                </columns>
+            </TableView>
+        </VBox>
+
+    </HBox>
+
+    <Label text="Horario del grupo seleccionado" styleClass="panel-titulo"/>
+
+    <TableView fx:id="tablaHorario" prefHeight="160">
+        <columns>
+            <TableColumn fx:id="colHorDia" text="Día" prefWidth="140"/>
+            <TableColumn fx:id="colHorInicio" text="Hora inicio" prefWidth="120"/>
+            <TableColumn fx:id="colHorFin" text="Hora fin" prefWidth="120"/>
+        </columns>
+    </TableView>
+
+</VBox>

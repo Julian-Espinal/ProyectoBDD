@@ -57,6 +57,25 @@ public class GrupoInscritoDAO {
         return lista;
     }
 
+    /** Cuenta cuántos estudiantes están inscritos actualmente en un grupo (para calcular cupo disponible). */
+    public int contarInscritos(String codigoPeriodo, String codigoAsignatura, String numeroGrupo)
+            throws SQLException {
+        String sql = "SELECT COUNT(*) FROM GruposInscritos WHERE RTRIM(codigoPeriodo) = ? " +
+                "AND RTRIM(codigoAsignatura) = ? AND RTRIM(numeroGrupo) = ?";
+        try (Connection con = ConexionBDD.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, codigoPeriodo.trim());
+            ps.setString(2, codigoAsignatura.trim());
+            ps.setString(3, numeroGrupo.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+        return 0;
+    }
+
     public List<GrupoInscrito> listarTodos() throws SQLException {
         List<GrupoInscrito> lista = new ArrayList<>();
         String sql = "SELECT codigoPeriodo, idEstudiante, codigoAsignatura, numeroGrupo FROM GruposInscritos";
