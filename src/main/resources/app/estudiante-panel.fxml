@@ -103,7 +103,7 @@
         <Label text="Buscar por ID:"/>
 
         <TextField fx:id="txtFiltroId"
-                   promptText="Ej. 10160001"
+                   promptText="Buscar por ID o apellido"
                    prefWidth="220"/>
 
     </HBox>

@@ -108,4 +108,22 @@ public class EstudianteDAO {
                 rs.getString("direccion")
         );
     }
+
+    /** Calcula el siguiente ID disponible como (MAX(id) + 1), en base a los IDs numéricos existentes. */
+    public String siguienteId() throws SQLException {
+        String sql = "SELECT MAX(CAST(RTRIM(id) AS BIGINT)) AS maxId FROM Estudiante";
+        try (Connection con = ConexionBDD.getConexion();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                long maxId = rs.getLong("maxId");
+                if (!rs.wasNull()) {
+                    return String.valueOf(maxId + 1);
+                }
+            }
+        }
+
+        return "10160001";
+    }
+
 }

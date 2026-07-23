@@ -4,6 +4,12 @@ import bdd.ConexionBDD;
 import bdd.EstudianteDAO;
 import bdd.HorarioClaseDAO;
 import bdd.TablaResultado;
+import bdd.CarreraDAO;
+import bdd.CategoriaPagoDAO;
+import bdd.NacionalidadDAO;
+import bdd.GrupoDAO;
+import bdd.GrupoInscritoDAO;
+import bdd.AsignaturaDAO;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -12,27 +18,26 @@ import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
+import javafx.util.StringConverter;
 import modelo.Estudiante;
+import modelo.Carrera;
+import modelo.CategoriaPago;
+import modelo.Nacionalidad;
+import modelo.Asignatura;
+import modelo.Grupo;
+import modelo.GrupoInscrito;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.stage.Stage;
 import javafx.scene.Scene;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.TableColumn;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Connection;
-import bdd.AsignaturaDAO;
-import bdd.CarreraDAO;
-import bdd.GrupoDAO;
-import bdd.GrupoInscritoDAO;
-import modelo.Asignatura;
-import modelo.Carrera;
-import modelo.Grupo;
-import modelo.GrupoInscrito;
-import javafx.scene.control.TableColumn;
-import java.util.List;
-
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 
 public class EstudiantePanelController {
@@ -51,10 +56,17 @@ public class EstudiantePanelController {
     private final ObservableList<Estudiante> datosMaestros = FXCollections.observableArrayList();
     private FilteredList<Estudiante> datosFiltrados;
     private final CarreraDAO carreraDAO = new CarreraDAO();
+    private final CategoriaPagoDAO categoriaPagoDAO = new CategoriaPagoDAO();
+    private final NacionalidadDAO nacionalidadDAO = new NacionalidadDAO();
     private final GrupoInscritoDAO grupoInscritoDAO = new GrupoInscritoDAO();
     private final GrupoDAO grupoDAO = new GrupoDAO();
     private final AsignaturaDAO asignaturaDAO = new AsignaturaDAO();
     private final HorarioClaseDAO horarioClaseDAO = new HorarioClaseDAO();
+
+    // Catálogos cacheados en memoria para llenar los combos del formulario
+    private List<Carrera> listaCarreras = FXCollections.observableArrayList();
+    private List<CategoriaPago> listaCategoriasPago = FXCollections.observableArrayList();
+    private List<Nacionalidad> listaNacionalidades = FXCollections.observableArrayList();
 
     @FXML
     private void initialize() {
@@ -66,16 +78,36 @@ public class EstudiantePanelController {
         colNacionalidad.setCellValueFactory(new PropertyValueFactory<>("idNacionalidad"));
         colDireccion.setCellValueFactory(new PropertyValueFactory<>("direccion"));
         cargarPeriodos();
+        cargarCatalogos();
         datosFiltrados = new FilteredList<>(datosMaestros, e -> true);
         tablaEstudiantes.setItems(datosFiltrados);
 
         txtFiltroId.textProperty().addListener((obs, viejo, nuevo) -> {
             String filtro = nuevo == null ? "" : nuevo.trim().toLowerCase();
             datosFiltrados.setPredicate(estudiante ->
-                    filtro.isEmpty() || estudiante.getId().toLowerCase().contains(filtro));
+                    filtro.isEmpty() || estudiante.getId().toLowerCase().contains(filtro) || (estudiante.getApellido() != null && estudiante.getApellido().toLowerCase().contains(filtro)));
         });
 
         cargarDatos();
+    }
+
+    /** Carga los catálogos (Carrera, CategoriaPago, Nacionalidad) una sola vez para usarlos en los combos del formulario. */
+    private void cargarCatalogos() {
+        try {
+            listaCarreras = carreraDAO.listarTodos();
+        } catch (SQLException e) {
+            mostrarError("No se pudo cargar el catálogo de carreras", e);
+        }
+        try {
+            listaCategoriasPago = categoriaPagoDAO.listarTodos();
+        } catch (SQLException e) {
+            mostrarError("No se pudo cargar el catálogo de categorías de pago", e);
+        }
+        try {
+            listaNacionalidades = nacionalidadDAO.listarTodos();
+        } catch (SQLException e) {
+            mostrarError("No se pudo cargar el catálogo de nacionalidades", e);
+        }
     }
 
     private void cargarDatos() {
@@ -88,7 +120,15 @@ public class EstudiantePanelController {
 
     @FXML
     private void onAnadir() {
-        Optional<Estudiante> resultado = mostrarFormulario(null);
+        String idGenerado;
+        try {
+            idGenerado = estudianteDAO.siguienteId();
+        } catch (SQLException e) {
+            mostrarError("No se pudo generar el ID del nuevo estudiante", e);
+            return;
+        }
+
+        Optional<Estudiante> resultado = mostrarFormulario(null, idGenerado);
         resultado.ifPresent(nuevo -> {
             try {
                 estudianteDAO.insertar(nuevo);
@@ -106,7 +146,7 @@ public class EstudiantePanelController {
             mostrarAviso("Selecciona un estudiante en la tabla para modificar.");
             return;
         }
-        Optional<Estudiante> resultado = mostrarFormulario(seleccionado);
+        Optional<Estudiante> resultado = mostrarFormulario(seleccionado, null);
         resultado.ifPresent(actualizado -> {
             try {
                 estudianteDAO.actualizar(actualizado);
@@ -141,53 +181,79 @@ public class EstudiantePanelController {
     }
 
     /**
-     * Formulario simple de alta/edicion. Si existente es null es un alta;
-     * si viene un Estudiante, precarga sus datos y bloquea el ID (es PK).
-     * Los campos idCarrera / idCategoriaPago / idNacionalidad son texto libre
-     * por ahora (todavia no hay combos con los catalogos correspondientes).
+     * Formulario de alta/edicion.
+     * - Si existente es null -> es un alta; se usa idGenerado (ya calculado) y el campo ID va deshabilitado.
+     * - Si existente no es null -> es una edicion; el ID viene de existente y también va deshabilitado.
+     * Carrera / Categoria de pago / Nacionalidad se seleccionan con ComboBox mostrando el nombre completo;
+     * internamente se guarda el objeto y al construir el Estudiante se extrae el código/id.
      */
-    private Optional<Estudiante> mostrarFormulario(Estudiante existente) {
+    private Optional<Estudiante> mostrarFormulario(Estudiante existente, String idGenerado) {
         boolean esEdicion = existente != null;
 
         Dialog<Estudiante> dialog = new Dialog<>();
         dialog.setTitle(esEdicion ? "Modificar estudiante" : "Anadir estudiante");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        TextField txtId = new TextField(esEdicion ? existente.getId() : "");
-        txtId.setDisable(esEdicion);
+        TextField txtId = new TextField(esEdicion ? existente.getId() : idGenerado);
+        txtId.setDisable(true); // el ID nunca se edita a mano: viene autogenerado o es la PK existente
+
         TextField txtNombre = new TextField(esEdicion ? existente.getNombre() : "");
         TextField txtApellido = new TextField(esEdicion ? existente.getApellido() : "");
-        TextField txtCarrera = new TextField(esEdicion ? existente.getIdCarrera() : "");
-        TextField txtCategoriaPago = new TextField(esEdicion ? existente.getIdCategoriaPago() : "");
-        TextField txtNacionalidad = new TextField(esEdicion ? existente.getIdNacionalidad() : "");
         TextField txtDireccion = new TextField(esEdicion ? existente.getDireccion() : "");
+
+        ComboBox<Carrera> cbCarrera = new ComboBox<>(FXCollections.observableArrayList(listaCarreras));
+        cbCarrera.setConverter(new StringConverter<Carrera>() {
+            @Override public String toString(Carrera c) { return c == null ? "" : c.getNombreCarrera(); }
+            @Override public Carrera fromString(String s) { return null; }
+        });
+
+        ComboBox<CategoriaPago> cbCategoriaPago = new ComboBox<>(FXCollections.observableArrayList(listaCategoriasPago));
+        cbCategoriaPago.setConverter(new StringConverter<CategoriaPago>() {
+            @Override public String toString(CategoriaPago c) { return c == null ? "" : c.getDescripcion(); }
+            @Override public CategoriaPago fromString(String s) { return null; }
+        });
+
+        ComboBox<Nacionalidad> cbNacionalidad = new ComboBox<>(FXCollections.observableArrayList(listaNacionalidades));
+        cbNacionalidad.setConverter(new StringConverter<Nacionalidad>() {
+            @Override public String toString(Nacionalidad n) { return n == null ? "" : n.getNombre(); }
+            @Override public Nacionalidad fromString(String s) { return null; }
+        });
+
+        // Si es edición, preseleccionamos el valor actual del estudiante en cada combo
+        if (esEdicion) {
+            preseleccionar(cbCarrera, listaCarreras, existente.getIdCarrera(), Carrera::getId);
+            preseleccionar(cbCategoriaPago, listaCategoriasPago, existente.getIdCategoriaPago(), CategoriaPago::getId);
+            preseleccionar(cbNacionalidad, listaNacionalidades, existente.getIdNacionalidad(), Nacionalidad::getId);
+        }
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setPadding(new Insets(20, 10, 10, 10));
 
-        String[] etiquetas = {"ID:", "Nombre:", "Apellido:", "Carrera (id):",
-                "Categoria pago (id):", "Nacionalidad (id):", "Direccion:"};
-        TextField[] campos = {txtId, txtNombre, txtApellido, txtCarrera,
-                txtCategoriaPago, txtNacionalidad, txtDireccion};
-
-        for (int i = 0; i < etiquetas.length; i++) {
-            grid.add(new Label(etiquetas[i]), 0, i);
-            grid.add(campos[i], 1, i);
-        }
+        grid.add(new Label("ID:"), 0, 0);              grid.add(txtId, 1, 0);
+        grid.add(new Label("Nombre:"), 0, 1);           grid.add(txtNombre, 1, 1);
+        grid.add(new Label("Apellido:"), 0, 2);         grid.add(txtApellido, 1, 2);
+        grid.add(new Label("Carrera:"), 0, 3);          grid.add(cbCarrera, 1, 3);
+        grid.add(new Label("Categoria de pago:"), 0, 4);grid.add(cbCategoriaPago, 1, 4);
+        grid.add(new Label("Nacionalidad:"), 0, 5);     grid.add(cbNacionalidad, 1, 5);
+        grid.add(new Label("Direccion:"), 0, 6);        grid.add(txtDireccion, 1, 6);
 
         dialog.getDialogPane().setContent(grid);
 
         dialog.setResultConverter(boton -> {
             if (boton == ButtonType.OK) {
+                if (cbCarrera.getValue() == null || cbCategoriaPago.getValue() == null || cbNacionalidad.getValue() == null) {
+                    mostrarAviso("Selecciona carrera, categoría de pago y nacionalidad.");
+                    return null;
+                }
                 return new Estudiante(
                         txtId.getText().trim(),
                         txtNombre.getText().trim(),
                         txtApellido.getText().trim(),
-                        txtCarrera.getText().trim(),
-                        txtCategoriaPago.getText().trim(),
-                        txtNacionalidad.getText().trim(),
+                        cbCarrera.getValue().getId(),
+                        cbCategoriaPago.getValue().getId(),
+                        cbNacionalidad.getValue().getId(),
                         txtDireccion.getText().trim()
                 );
             }
@@ -195,6 +261,19 @@ public class EstudiantePanelController {
         });
 
         return dialog.showAndWait();
+    }
+
+    /** Busca en la lista el elemento cuyo id coincide (trim) con idBuscado y lo selecciona en el combo. */
+    private <T> void preseleccionar(ComboBox<T> combo, List<T> lista, String idBuscado,
+                                    java.util.function.Function<T, String> extractorId) {
+        if (idBuscado == null) return;
+        for (T item : lista) {
+            String idItem = extractorId.apply(item);
+            if (idItem != null && idItem.trim().equals(idBuscado.trim())) {
+                combo.setValue(item);
+                return;
+            }
+        }
     }
 
     private void mostrarAviso(String mensaje) {
@@ -390,7 +469,7 @@ public class EstudiantePanelController {
             mostrarError("No se pudo generar el informe de inscripción", e);
         }
     }
-    /** Formatea "Juan Antonio" + "Luna Perez" -> "Juan A. Luna P." */
+
     private String formatearNombreCompleto(String nombre, String apellido) {
         String primerNombre = "";
         String inicialSegundoNombre = "";
@@ -417,7 +496,6 @@ public class EstudiantePanelController {
         return sb.toString();
     }
 
-    /** Fila para la tabla del informe de inscripción. */
     public static class InformeFila {
         private final String codigoAsignatura;
         private final String nombreAsignatura;

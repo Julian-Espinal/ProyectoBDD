@@ -30,6 +30,7 @@ import java.util.Set;
 public class InscripcionPanelController {
 
     @FXML private ComboBox<String> cbPeriodo;
+    @FXML private TextField txtBuscarEstudiante;
     @FXML private ComboBox<Estudiante> cbEstudiante;
 
     @FXML private TableView<GrupoFila> tablaDisponibles;
@@ -57,6 +58,9 @@ public class InscripcionPanelController {
     private final ObservableList<GrupoFila> datosDisponibles = FXCollections.observableArrayList();
     private final ObservableList<GrupoFila> datosInscritos = FXCollections.observableArrayList();
     private final ObservableList<HorarioGrupo> datosHorario = FXCollections.observableArrayList();
+
+    /** Lista completa de estudiantes (sin filtrar), cacheada para no ir a la BD en cada tecla. */
+    private final ObservableList<Estudiante> todosEstudiantes = FXCollections.observableArrayList();
 
     /** Cache del nombre de asignatura por código, para no ir a la BD por cada fila. */
     private final Map<String, String> nombresAsignatura = new HashMap<>();
@@ -95,6 +99,10 @@ public class InscripcionPanelController {
             @Override public Estudiante fromString(String s) { return null; }
         });
 
+        // A medida que el usuario escribe, filtramos la lista completa por ID o apellido
+        // y actualizamos los items del combo, abriéndolo para mostrar las coincidencias.
+        txtBuscarEstudiante.textProperty().addListener((obs, viejo, nuevo) -> filtrarEstudiantes(nuevo));
+
         // Cambiar de PERIODO recarga las caches (grupos, cupos, horarios) desde la BD.
         cbPeriodo.valueProperty().addListener((obs, viejo, nuevo) -> {
             cargarCachesDelPeriodo(nuevo);
@@ -127,9 +135,47 @@ public class InscripcionPanelController {
 
     private void cargarEstudiantes() {
         try {
-            cbEstudiante.setItems(FXCollections.observableArrayList(estudianteDAO.listarTodos()));
+            todosEstudiantes.setAll(estudianteDAO.listarTodos());
+            cbEstudiante.setItems(FXCollections.observableArrayList(todosEstudiantes));
         } catch (SQLException e) {
             error("No se pudo cargar la lista de estudiantes", e);
+        }
+    }
+
+    /**
+     * Filtra la lista completa de estudiantes por ID o apellido (contains, sin distinguir
+     * mayúsculas/minúsculas) y actualiza los items del combo. Si el texto está vacío,
+     * restaura la lista completa. No toca la selección actual salvo que ya no aparezca
+     * en el resultado filtrado.
+     */
+    private void filtrarEstudiantes(String texto) {
+        String filtro = texto == null ? "" : texto.trim().toLowerCase();
+
+        Estudiante seleccionadoActual = cbEstudiante.getValue();
+
+        if (filtro.isEmpty()) {
+            cbEstudiante.setItems(FXCollections.observableArrayList(todosEstudiantes));
+        } else {
+            ObservableList<Estudiante> filtrados = FXCollections.observableArrayList();
+            for (Estudiante e : todosEstudiantes) {
+                boolean coincideId = e.getId() != null && e.getId().toLowerCase().contains(filtro);
+                boolean coincideApellido = e.getApellido() != null && e.getApellido().toLowerCase().contains(filtro);
+                if (coincideId || coincideApellido) {
+                    filtrados.add(e);
+                }
+            }
+            cbEstudiante.setItems(filtrados);
+
+            if (!filtrados.isEmpty()) {
+                cbEstudiante.show();
+            } else {
+                cbEstudiante.hide();
+            }
+        }
+
+        // Si el estudiante que estaba seleccionado sigue en la lista filtrada, lo mantenemos.
+        if (seleccionadoActual != null && cbEstudiante.getItems().contains(seleccionadoActual)) {
+            cbEstudiante.setValue(seleccionadoActual);
         }
     }
 

@@ -1,23 +1,25 @@
 package bdd;
 
-import modelo.Carrera;
+import modelo.CategoriaPago;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
-public class CarreraDAO {
+public class CategoriaPagoDAO {
 
-    public Carrera buscarPorId(String id) throws SQLException {
-        String sql = "SELECT id, nombreCarrera FROM Carrera WHERE RTRIM(id) = ?";
+    public CategoriaPago buscarPorId(String id) throws SQLException {
+        String sql = "SELECT id, descripcion FROM CategoriaPago WHERE RTRIM(id) = ?";
         try (Connection con = ConexionBDD.getConexion();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, id.trim());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return new Carrera(
+                    return new CategoriaPago(
                             rs.getString("id").trim(),
-                            rs.getString("nombreCarrera")
+                            rs.getString("descripcion")
                     );
                 }
             }
@@ -25,16 +27,16 @@ public class CarreraDAO {
         return null;
     }
 
-    public java.util.List<Carrera> listarTodos() throws SQLException {
-        java.util.List<Carrera> lista = new java.util.ArrayList<>();
-        String sql = "SELECT id, nombreCarrera FROM Carrera ORDER BY nombreCarrera";
+    public List<CategoriaPago> listarTodos() throws SQLException {
+        List<CategoriaPago> lista = new ArrayList<>();
+        String sql = "SELECT id, descripcion FROM CategoriaPago ORDER BY descripcion";
         try (Connection con = ConexionBDD.getConexion();
              PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                lista.add(new Carrera(
+                lista.add(new CategoriaPago(
                         rs.getString("id").trim(),
-                        rs.getString("nombreCarrera")
+                        rs.getString("descripcion")
                 ));
             }
         }

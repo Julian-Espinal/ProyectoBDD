@@ -6,6 +6,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
@@ -24,6 +25,7 @@
         <Label text="Periodo:"/>
         <ComboBox fx:id="cbPeriodo" prefWidth="140"/>
         <Label text="Estudiante:"/>
+        <TextField fx:id="txtBuscarEstudiante" promptText="Buscar por ID o apellido" prefWidth="180"/>
         <ComboBox fx:id="cbEstudiante" prefWidth="320"/>
     </HBox>
 
