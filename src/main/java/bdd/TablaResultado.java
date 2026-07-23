@@ -2,12 +2,6 @@ package bdd;
 
 import java.util.List;
 
-/**
- * Contenedor simple para el resultado de una consulta/stored procedure
- * que se va a mostrar en una tabla dinámica (columnas desconocidas en tiempo
- * de compilación). Evita repetir la lógica de leer ResultSetMetaData en
- * cada controller que necesite pintar una tabla genérica.
- */
 public class TablaResultado {
     private final List<String> columnas;
     private final List<String[]> filas;

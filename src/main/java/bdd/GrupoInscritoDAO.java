@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** DAO para la tabla GruposInscritos. Llave compuesta: (codigoPeriodo, idEstudiante, codigoAsignatura, numeroGrupo) */
+
 public class GrupoInscritoDAO {
 
     public boolean insertar(GrupoInscrito gi) throws SQLException {
@@ -40,7 +40,6 @@ public class GrupoInscritoDAO {
         }
     }
 
-    /** Lista las asignaturas/grupos en los que está inscrito un estudiante en un período. */
     public List<GrupoInscrito> listarPorEstudiantePeriodo(String idEstudiante, String codigoPeriodo)
             throws SQLException {
         List<GrupoInscrito> lista = new ArrayList<>();
@@ -59,8 +58,7 @@ public class GrupoInscritoDAO {
         return lista;
     }
 
-    /** Cuenta cuántos estudiantes están inscritos actualmente en un grupo (para calcular cupo disponible). */
-    public int contarInscritos(String codigoPeriodo, String codigoAsignatura, String numeroGrupo)
+     int contarInscritos(String codigoPeriodo, String codigoAsignatura, String numeroGrupo)
             throws SQLException {
         String sql = "SELECT COUNT(*) FROM GruposInscritos WHERE RTRIM(codigoPeriodo) = ? " +
                 "AND RTRIM(codigoAsignatura) = ? AND RTRIM(numeroGrupo) = ?";
@@ -78,11 +76,7 @@ public class GrupoInscritoDAO {
         return 0;
     }
 
-    /**
-     * Cuenta los inscritos de TODOS los grupos de un período en una sola consulta
-     * (evita el patrón N+1 de llamar contarInscritos() grupo por grupo).
-     * Clave del mapa: "codigoAsignatura|numeroGrupo" (ya trim-eados).
-     */
+
     public Map<String, Integer> contarInscritosPorPeriodo(String codigoPeriodo) throws SQLException {
         Map<String, Integer> mapa = new HashMap<>();
         String sql = "SELECT codigoAsignatura, numeroGrupo, COUNT(*) AS total FROM GruposInscritos " +

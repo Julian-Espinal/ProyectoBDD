@@ -3,17 +3,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-/**
- * Maneja la conexión (Singleton) hacia la base de datos SQL Server "AcadDB(RDGC0002)".
- *
- * IMPORTANTE:
- *  - Ajusta SERVIDOR, PUERTO, USUARIO y PASSWORD según tu instalación de SQL Server.
- *  - El nombre de la base de datos tiene paréntesis "AcadDB(RDGC0002)", lo cual es
- *    válido pero poco común. Si tienes problemas de conexión, considera renombrar
- *    la base de datos sin paréntesis en SQL Server Management Studio.
- *  - Necesitas agregar la dependencia del driver mssql-jdbc a tu proyecto
- *    (ver pom.xml / build.gradle o el .jar en el classpath).
- */
 public class ConexionBDD {
 
     private static final String SERVIDOR = "localhost";
