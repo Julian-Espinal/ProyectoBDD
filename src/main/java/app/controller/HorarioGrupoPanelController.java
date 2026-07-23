@@ -104,6 +104,18 @@ public class HorarioGrupoPanelController {
         return String.valueOf(dia);
     }
 
+    /** Dos bloques cruzan si son el mismo día y sus rangos de hora se solapan. */
+    private boolean seCruzan(int diaA, LocalTime iniA, LocalTime finA,
+                             int diaB, LocalTime iniB, LocalTime finB) {
+        if (diaA != diaB) return false;
+
+        LocalTime finARef = finA != null ? finA : iniA;
+        LocalTime finBRef = finB != null ? finB : iniB;
+
+        // Solapan si NO ocurre que uno termina antes de que el otro empiece.
+        return iniA.isBefore(finBRef) && iniB.isBefore(finARef);
+    }
+
     private void cargarGrupos(String periodo) {
         datosHorarios.clear();
         lblInfoGrupo.setText("Selecciona un grupo para ver su información");
@@ -184,6 +196,18 @@ public class HorarioGrupoPanelController {
         if (fin != null && !fin.isAfter(inicio)) {
             aviso("La hora de fin debe ser posterior a la hora de inicio.");
             return;
+        }
+
+        // --- Validación de cruce con los horarios que ya tiene este grupo ---
+        for (HorarioGrupo existente : datosHorarios) {
+            if (seCruzan(dia.getDia(), inicio, fin,
+                    existente.getDia(), existente.getHoraInicio(), existente.getHoraFin())) {
+                aviso("Ese horario se cruza con uno ya existente en este grupo: "
+                        + nombreDia(existente.getDia()) + " "
+                        + existente.getHoraInicio() + " - "
+                        + (existente.getHoraFin() != null ? existente.getHoraFin() : "(sin fin)"));
+                return;
+            }
         }
 
         HorarioGrupo h = new HorarioGrupo(g.getCodigoPeriodo(), g.getCodigoAsignatura(), g.getNumeroGrupo(),

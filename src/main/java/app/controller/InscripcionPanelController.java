@@ -26,6 +26,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import bdd.DiaSemanaDAO;
+import modelo.DiaSemana;
 
 public class InscripcionPanelController {
 
@@ -49,6 +51,8 @@ public class InscripcionPanelController {
     @FXML private TableColumn<HorarioGrupo, String> colHorInicio;
     @FXML private TableColumn<HorarioGrupo, String> colHorFin;
 
+    private final DiaSemanaDAO diaSemanaDAO = new DiaSemanaDAO();
+    private final Map<Integer, String> nombresDia = new HashMap<>();
     private final GrupoDAO grupoDAO = new GrupoDAO();
     private final GrupoInscritoDAO grupoInscritoDAO = new GrupoInscritoDAO();
     private final EstudianteDAO estudianteDAO = new EstudianteDAO();
@@ -83,7 +87,8 @@ public class InscripcionPanelController {
         colInsNombre.setCellValueFactory(new PropertyValueFactory<>("nombreAsignatura"));
         colInsGrupo.setCellValueFactory(new PropertyValueFactory<>("numeroGrupo"));
 
-        colHorDia.setCellValueFactory(cd -> new SimpleStringProperty(String.valueOf(cd.getValue().getDia())));
+        cargarDiasSemana();
+        colHorDia.setCellValueFactory(cd -> new SimpleStringProperty(nombreDia(cd.getValue().getDia())));
         colHorInicio.setCellValueFactory(cd -> new SimpleStringProperty(String.valueOf(cd.getValue().getHoraInicio())));
         colHorFin.setCellValueFactory(cd ->
                 new SimpleStringProperty(cd.getValue().getHoraFin() != null ? cd.getValue().getHoraFin().toString() : ""));
@@ -400,5 +405,21 @@ public class InscripcionPanelController {
         public String getNombreAsignatura() { return nombreAsignatura; }
         public String getNumeroGrupo() { return grupo.getNumeroGrupo(); }
         public String getCupoTexto() { return cupoTexto; }
+    }
+
+    private void cargarDiasSemana() {
+        try {
+            for (DiaSemana d : diaSemanaDAO.listarTodos()) {
+                if (d.getDia() != null) {
+                    nombresDia.put(d.getDia(), d.getDescripcion());
+                }
+            }
+        } catch (SQLException e) {
+            error("No se pudo cargar el catálogo de días", e);
+        }
+    }
+
+    private String nombreDia(int dia) {
+        return nombresDia.getOrDefault(dia, String.valueOf(dia));
     }
 }
