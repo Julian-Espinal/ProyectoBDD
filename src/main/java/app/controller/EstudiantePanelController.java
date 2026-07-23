@@ -320,16 +320,27 @@ public class EstudiantePanelController {
                     grupoInscritoDAO.listarPorEstudiantePeriodo(estudiante.getId(), periodo);
 
             ObservableList<InformeFila> filas = FXCollections.observableArrayList();
+            int totalCreditos = 0;
+
             for (GrupoInscrito gi : inscritos) {
                 Asignatura asignatura = asignaturaDAO.buscarPorId(gi.getCodigoAsignatura());
                 Grupo grupo = grupoDAO.buscarPorId(gi.getCodigoPeriodo(), gi.getCodigoAsignatura(), gi.getNumeroGrupo());
+
+                Integer creditos = asignatura != null ? asignatura.getCreditos() : null;
+                if (creditos != null) {
+                    totalCreditos += creditos;
+                }
+
                 filas.add(new InformeFila(
                         gi.getCodigoAsignatura(),
                         asignatura != null ? asignatura.getNombre() : "",
                         gi.getNumeroGrupo(),
+                        creditos,
                         grupo != null && grupo.getHorario() != null ? grupo.getHorario() : "(sin horario)"
                 ));
             }
+
+            int totalGrupos = filas.size();
 
             Label lblPeriodo = new Label("Período Académico: " + periodo);
             Label lblEstudiante = new Label("Estudiante: " + estudiante.getId() + " - "
@@ -351,27 +362,34 @@ public class EstudiantePanelController {
             colNumGrupo.setCellValueFactory(new PropertyValueFactory<>("numeroGrupo"));
             colNumGrupo.setPrefWidth(130);
 
+            TableColumn<InformeFila, Integer> colCreditos = new TableColumn<>("Créditos");
+            colCreditos.setCellValueFactory(new PropertyValueFactory<>("creditos"));
+            colCreditos.setPrefWidth(80);
+
             TableColumn<InformeFila, String> colHorario = new TableColumn<>("Horario");
             colHorario.setCellValueFactory(new PropertyValueFactory<>("horario"));
             colHorario.setPrefWidth(260);
 
-            tabla.getColumns().addAll(colCodAsig, colNombreAsig, colNumGrupo, colHorario);
+            tabla.getColumns().addAll(colCodAsig, colNombreAsig, colNumGrupo, colCreditos, colHorario);
             tabla.setItems(filas);
             tabla.setPrefHeight(320);
 
-            VBox root = new VBox(12, lblPeriodo, lblEstudiante, lblCarrera, tabla);
+            Label lblTotales = new Label("Total de grupos inscritos: " + totalGrupos
+                    + "   |   Total de créditos: " + totalCreditos);
+            lblTotales.getStyleClass().add("panel-titulo");
+
+            VBox root = new VBox(12, lblPeriodo, lblEstudiante, lblCarrera, tabla, lblTotales);
             root.setPadding(new Insets(20));
 
             Stage ventana = new Stage();
             ventana.setTitle("Informe de Inscripción");
-            ventana.setScene(new Scene(root, 780, 480));
+            ventana.setScene(new Scene(root, 780, 520));
             ventana.show();
 
         } catch (SQLException e) {
             mostrarError("No se pudo generar el informe de inscripción", e);
         }
     }
-
     /** Formatea "Juan Antonio" + "Luna Perez" -> "Juan A. Luna P." */
     private String formatearNombreCompleto(String nombre, String apellido) {
         String primerNombre = "";
@@ -404,18 +422,21 @@ public class EstudiantePanelController {
         private final String codigoAsignatura;
         private final String nombreAsignatura;
         private final String numeroGrupo;
+        private final Integer creditos;
         private final String horario;
 
-        public InformeFila(String codigoAsignatura, String nombreAsignatura, String numeroGrupo, String horario) {
+        public InformeFila(String codigoAsignatura, String nombreAsignatura, String numeroGrupo,Integer creditos, String horario) {
             this.codigoAsignatura = codigoAsignatura;
             this.nombreAsignatura = nombreAsignatura;
             this.numeroGrupo = numeroGrupo;
+            this.creditos = creditos;
             this.horario = horario;
         }
 
         public String getCodigoAsignatura() { return codigoAsignatura; }
         public String getNombreAsignatura() { return nombreAsignatura; }
         public String getNumeroGrupo() { return numeroGrupo; }
+        public Integer getCreditos() { return creditos; }
         public String getHorario() { return horario; }
     }
 }
